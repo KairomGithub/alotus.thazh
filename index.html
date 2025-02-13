@@ -4,12 +4,49 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alotus</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; text-align: center; }
+    .auth-container, .app-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    .auth-box, .post-box, .post { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 90%; max-width: 400px; }
+    .auth-box input, .auth-box button, .post-box textarea, .post-box button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 4px; }
+    .auth-box button, .post-box button { background: #4267B2; color: white; cursor: pointer; }
+    .auth-box .google-btn { background: #db4437; }
+  </style>
+</head>
+<body>
+  <!-- Đăng nhập -->
+  <div id="auth-container" class="auth-container">
+    <div id="login-box" class="auth-box">
+      <input type="text" id="login-username" placeholder="Email">
+      <input type="password" id="login-password" placeholder="Mật khẩu">
+      <button id="login-btn">Đăng nhập</button>
+      <button id="google-btn" class="google-btn">Google</button>
+      <p><a href="#" id="show-register">Đăng ký</a></p>
+    </div>
+    <div id="register-box" class="auth-box" style="display: none;">
+      <input type="text" id="register-username" placeholder="Email">
+      <input type="password" id="register-password" placeholder="Mật khẩu">
+      <button id="register-btn">Đăng ký</button>
+      <p><a href="#" id="show-login">Đăng nhập</a></p>
+    </div>
+  </div>
+
+  <!-- Ứng dụng -->
+  <div id="app-container" class="app-container" style="display: none;">
+    <button id="logout-btn">Đăng xuất</button>
+    <div class="post-box">
+      <textarea id="post-content" placeholder="Bạn đang nghĩ gì?"></textarea>
+      <button id="post-btn">Đăng bài</button>
+    </div>
+    <div id="posts"></div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyDItUPc2MiD1-Rwm4LXg-yHSQnNt8MBwbE",
       authDomain: "alotus-social.firebaseapp.com",
@@ -19,78 +56,65 @@
       appId: "1:163173869765:web:12600c0052d725cfe2a8ac"
     };
 
-    // Khởi tạo Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Hiển thị giao diện
-    function showRegister() {
+    document.getElementById("show-register").addEventListener("click", () => {
       document.getElementById("login-box").style.display = "none";
       document.getElementById("register-box").style.display = "block";
-    }
+    });
 
-    function showLogin() {
+    document.getElementById("show-login").addEventListener("click", () => {
       document.getElementById("register-box").style.display = "none";
       document.getElementById("login-box").style.display = "block";
-    }
+    });
 
-    // Đăng ký tài khoản
-    function register() {
+    document.getElementById("register-btn").addEventListener("click", async () => {
       const email = document.getElementById("register-username").value;
       const password = document.getElementById("register-password").value;
       
-      createUserWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          alert("Đăng ký thành công! Hãy đăng nhập.");
-          showLogin();
-        })
-        .catch(error => alert(error.message));
-    }
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert("Đăng ký thành công! Vui lòng đăng nhập.");
+        document.getElementById("show-login").click();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
 
-    // Đăng nhập Email & Mật khẩu
-    function login() {
+    document.getElementById("login-btn").addEventListener("click", async () => {
       const email = document.getElementById("login-username").value;
       const password = document.getElementById("login-password").value;
 
-      signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          sessionStorage.setItem("loggedInUser", email);
-          showApp(email);
-        })
-        .catch(() => alert("Sai thông tin đăng nhập!"));
-    }
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        sessionStorage.setItem("loggedInUser", email);
+        showApp(email);
+      } catch {
+        alert("Sai thông tin đăng nhập!");
+      }
+    });
 
-    // Đăng nhập bằng Google
-    function loginWithGoogle() {
+    document.getElementById("google-btn").addEventListener("click", async () => {
       const provider = new GoogleAuthProvider();
-      signInWithPopup(auth, provider)
-        .then(result => {
-          const user = result.user;
-          sessionStorage.setItem("loggedInUser", user.displayName);
-          showApp(user.displayName);
-        })
-        .catch(error => alert("Lỗi đăng nhập: " + error.message));
-    }
+      try {
+        const result = await signInWithPopup(auth, provider);
+        sessionStorage.setItem("loggedInUser", result.user.displayName);
+        showApp(result.user.displayName);
+      } catch (error) {
+        alert("Lỗi đăng nhập: " + error.message);
+      }
+    });
 
-    // Hiển thị giao diện chính
-    function showApp(username) {
-      document.getElementById("auth-container").style.display = "none";
-      document.getElementById("app-container").style.display = "flex";
-      loadPosts();
-    }
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await signOut(auth);
+      sessionStorage.removeItem("loggedInUser");
+      document.getElementById("app-container").style.display = "none";
+      document.getElementById("auth-container").style.display = "flex";
+    });
 
-    // Đăng xuất
-    function logout() {
-      signOut(auth).then(() => {
-        sessionStorage.removeItem("loggedInUser");
-        document.getElementById("app-container").style.display = "none";
-        document.getElementById("auth-container").style.display = "flex";
-      });
-    }
-
-    // Đăng bài viết
-    async function addPost() {
+    document.getElementById("post-btn").addEventListener("click", async () => {
       const content = document.getElementById("post-content").value;
       const username = sessionStorage.getItem("loggedInUser");
 
@@ -102,15 +126,18 @@
       await addDoc(collection(db, "posts"), {
         username: username,
         content: content,
-        likes: [],
-        comments: [],
         timestamp: new Date()
       });
 
       document.getElementById("post-content").value = "";
+    });
+
+    function showApp(username) {
+      document.getElementById("auth-container").style.display = "none";
+      document.getElementById("app-container").style.display = "flex";
+      loadPosts();
     }
 
-    // Load bài viết
     function loadPosts() {
       const feed = document.getElementById("posts");
       feed.innerHTML = "";
@@ -122,45 +149,10 @@
           const data = doc.data();
           const postDiv = document.createElement("div");
           postDiv.classList.add("post");
-          postDiv.innerHTML = `
-            <p><strong>${data.username}:</strong> ${data.content}</p>
-            <button onclick="likePost('${doc.id}')">❤️ Thích (${data.likes.length})</button>
-            <button onclick="commentPost('${doc.id}')">💬 Bình luận</button>
-            <button onclick="sharePost('${data.content}')">🔗 Chia sẻ</button>
-            <div id="comments-${doc.id}"></div>
-          `;
+          postDiv.innerHTML = `<p><strong>${data.username}:</strong> ${data.content}</p>`;
           feed.appendChild(postDiv);
         });
       });
-    }
-
-    // Like bài viết
-    async function likePost(postId) {
-      const username = sessionStorage.getItem("loggedInUser");
-      const postRef = doc(db, "posts", postId);
-
-      await updateDoc(postRef, {
-        likes: arrayUnion(username)
-      });
-    }
-
-    // Bình luận bài viết
-    function commentPost(postId) {
-      const comment = prompt("Nhập bình luận:");
-      if (!comment) return;
-
-      const username = sessionStorage.getItem("loggedInUser");
-      const postRef = doc(db, "posts", postId);
-
-      updateDoc(postRef, {
-        comments: arrayUnion({ username, text: comment })
-      });
-    }
-
-    // Chia sẻ bài viết
-    function sharePost(content) {
-      navigator.clipboard.writeText(content);
-      alert("Đã sao chép nội dung bài viết!");
     }
 
     window.onload = function() {
@@ -168,35 +160,5 @@
       if (loggedInUser) showApp(loggedInUser);
     };
   </script>
-
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background: #f0f2f5; color: #333; }
-    .auth-container, .app-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
-    .auth-box, .post-box, .post { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 10px; width: 90%; max-width: 400px; }
-    .auth-box input, .auth-box button, .post-box textarea, .post-box button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 4px; }
-    .auth-box button, .post-box button { background: #4267B2; color: white; cursor: pointer; }
-    .auth-box .google-btn { background: #db4437; }
-  </style>
-</head>
-<body>
-  <div id="auth-container" class="auth-container">
-    <div id="login-box" class="auth-box">
-      <input type="text" id="login-username" placeholder="Email">
-      <input type="password" id="login-password" placeholder="Mật khẩu">
-      <button onclick="login()">Đăng nhập</button>
-      <button class="google-btn" onclick="loginWithGoogle()">Google</button>
-      <p><a href="#" onclick="showRegister()">Đăng ký</a></p>
-    </div>
-  </div>
-
-  <div id="app-container" class="app-container" style="display: none;">
-    <button onclick="logout()">Đăng xuất</button>
-    <div class="post-box">
-      <textarea id="post-content"></textarea>
-      <button onclick="addPost()">Đăng bài</button>
-    </div>
-    <div id="posts"></div>
-  </div>
 </body>
-  </html>
+</html>
