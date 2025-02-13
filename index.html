@@ -1,161 +1,202 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alotus</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background-color: #f0f2f5; color: #333; }
-    .auth-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .auth-box { background: #fff; width: 100%; max-width: 400px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .auth-box h2 { color: #4267B2; text-align: center; margin-bottom: 20px; }
-    .auth-box input, .auth-box button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 4px; font-size: 16px; }
-    .auth-box button { background-color: #4267B2; border: none; color: #fff; cursor: pointer; }
-    .auth-box button:hover { background-color: #365899; }
-    .auth-box .google-btn { background-color: #db4437; }
-    .app-container { display: none; flex-direction: column; height: 100vh; }
-    header { background-color: #4267B2; padding: 10px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
-    .feed { flex: 1; overflow-y: auto; padding: 10px; background-color: #f0f2f5; }
-    .post-box, .post { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .post-box textarea { width: 100%; height: 60px; resize: none; }
-    .bottom-nav { height: 50px; background: #fff; display: flex; border-top: 1px solid #ddd; }
-    .bottom-nav a { flex: 1; text-align: center; line-height: 50px; color: #555; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <!-- Đăng nhập/Đăng ký -->
-  <div id="auth-container" class="auth-container">
-    <div id="login-box" class="auth-box">
-      <h2>Đăng nhập</h2>
-      <input type="text" id="login-username" placeholder="Tên đăng nhập" />
-      <input type="password" id="login-password" placeholder="Mật khẩu" />
-      <button onclick="login()">Đăng nhập</button>
-      <button class="google-btn" onclick="loginWithGoogle()">Đăng nhập với Google</button>
-      <p>Chưa có tài khoản? <a href="#" onclick="showRegister()">Đăng ký</a></p>
-    </div>
-    <div id="register-box" class="auth-box" style="display: none;">
-      <h2>Đăng ký</h2>
-      <input type="text" id="register-username" placeholder="Tên đăng nhập" />
-      <input type="password" id="register-password" placeholder="Mật khẩu" />
-      <button onclick="register()">Đăng ký</button>
-      <p>Đã có tài khoản? <a href="#" onclick="showLogin()">Đăng nhập</a></p>
-    </div>
-  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-  <!-- Giao diện chính -->
-  <div id="app-container" class="app-container">
-    <header>
-      <div class="logo">Alotus 【𝗕𝗲𝘁𝝰】</div>
-      <button onclick="logout()">Đăng xuất</button>
-    </header>
-    <div class="feed" id="feed">
-      <div class="post-box">
-        <textarea id="post-content" placeholder="Bạn đang nghĩ gì?"></textarea>
-        <button onclick="addPost()">Đăng bài</button>
-      </div>
-      <div id="posts"></div>
-    </div>
-    <div class="bottom-nav">
-      <a href="#" class="active" onclick="switchTab('home')">Trang chủ</a>
-      <a href="#" onclick="switchTab('profile')">Cá nhân</a>
-      <a href="#" onclick="switchTab('friends')">Bạn bè</a>
-      <a href="#" onclick="switchTab('settings')">Cài đặt</a>
-    </div>
-  </div>
-
-  <script>
-    // Firebase config
+    // Firebase Config
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyDItUPc2MiD1-Rwm4LXg-yHSQnNt8MBwbE",
+      authDomain: "alotus-social.firebaseapp.com",
+      projectId: "alotus-social",
+      storageBucket: "alotus-social.appspot.com",
+      messagingSenderId: "163173869765",
+      appId: "1:163173869765:web:12600c0052d725cfe2a8ac"
     };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
 
+    // Khởi tạo Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Hiển thị giao diện
     function showRegister() {
       document.getElementById("login-box").style.display = "none";
       document.getElementById("register-box").style.display = "block";
     }
+
     function showLogin() {
       document.getElementById("register-box").style.display = "none";
       document.getElementById("login-box").style.display = "block";
     }
+
+    // Đăng ký tài khoản
     function register() {
-      let username = document.getElementById("register-username").value;
-      let password = document.getElementById("register-password").value;
-      if (username.trim() === "" || password.trim() === "") {
-        alert("Vui lòng nhập đầy đủ thông tin!");
-        return;
-      }
-      if (localStorage.getItem(username)) {
-        alert("Tài khoản đã tồn tại!");
-        return;
-      }
-      localStorage.setItem(username, password);
-      alert("Đăng ký thành công! Vui lòng đăng nhập.");
-      showLogin();
+      const email = document.getElementById("register-username").value;
+      const password = document.getElementById("register-password").value;
+      
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          alert("Đăng ký thành công! Hãy đăng nhập.");
+          showLogin();
+        })
+        .catch(error => alert(error.message));
     }
+
+    // Đăng nhập Email & Mật khẩu
     function login() {
-      let username = document.getElementById("login-username").value;
-      let password = document.getElementById("login-password").value;
-      let storedPassword = localStorage.getItem(username);
-      if (storedPassword === password) {
-        sessionStorage.setItem("loggedInUser", username);
-        showApp(username);
-      } else {
-        alert("Sai tên đăng nhập hoặc mật khẩu!");
-      }
+      const email = document.getElementById("login-username").value;
+      const password = document.getElementById("login-password").value;
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          sessionStorage.setItem("loggedInUser", email);
+          showApp(email);
+        })
+        .catch(() => alert("Sai thông tin đăng nhập!"));
     }
+
+    // Đăng nhập bằng Google
     function loginWithGoogle() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider)
-        .then((result) => {
+      const provider = new GoogleAuthProvider();
+      signInWithPopup(auth, provider)
+        .then(result => {
           const user = result.user;
           sessionStorage.setItem("loggedInUser", user.displayName);
           showApp(user.displayName);
         })
-        .catch((error) => {
-          alert("Lỗi đăng nhập: " + error.message);
-        });
+        .catch(error => alert("Lỗi đăng nhập: " + error.message));
     }
+
+    // Hiển thị giao diện chính
     function showApp(username) {
       document.getElementById("auth-container").style.display = "none";
       document.getElementById("app-container").style.display = "flex";
+      loadPosts();
     }
+
+    // Đăng xuất
     function logout() {
-      sessionStorage.removeItem("loggedInUser");
-      document.getElementById("app-container").style.display = "none";
-      document.getElementById("auth-container").style.display = "flex";
+      signOut(auth).then(() => {
+        sessionStorage.removeItem("loggedInUser");
+        document.getElementById("app-container").style.display = "none";
+        document.getElementById("auth-container").style.display = "flex";
+      });
     }
-    function addPost() {
-      let content = document.getElementById("post-content").value;
-      let username = sessionStorage.getItem("loggedInUser");
-      if (!username) {
-        alert("Bạn chưa đăng nhập!");
-        return;
-      }
-      if (content.trim() === "") {
+
+    // Đăng bài viết
+    async function addPost() {
+      const content = document.getElementById("post-content").value;
+      const username = sessionStorage.getItem("loggedInUser");
+
+      if (!username || content.trim() === "") {
         alert("Vui lòng nhập nội dung bài viết!");
         return;
       }
-      let postContainer = document.getElementById("posts");
-      let postDiv = document.createElement("div");
-      postDiv.classList.add("post");
-      postDiv.innerHTML = `<p><strong>${username}:</strong> ${content}</p>`;
-      postContainer.prepend(postDiv);
+
+      await addDoc(collection(db, "posts"), {
+        username: username,
+        content: content,
+        likes: [],
+        comments: [],
+        timestamp: new Date()
+      });
+
       document.getElementById("post-content").value = "";
     }
+
+    // Load bài viết
+    function loadPosts() {
+      const feed = document.getElementById("posts");
+      feed.innerHTML = "";
+      const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+
+      onSnapshot(q, snapshot => {
+        feed.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const postDiv = document.createElement("div");
+          postDiv.classList.add("post");
+          postDiv.innerHTML = `
+            <p><strong>${data.username}:</strong> ${data.content}</p>
+            <button onclick="likePost('${doc.id}')">❤️ Thích (${data.likes.length})</button>
+            <button onclick="commentPost('${doc.id}')">💬 Bình luận</button>
+            <button onclick="sharePost('${data.content}')">🔗 Chia sẻ</button>
+            <div id="comments-${doc.id}"></div>
+          `;
+          feed.appendChild(postDiv);
+        });
+      });
+    }
+
+    // Like bài viết
+    async function likePost(postId) {
+      const username = sessionStorage.getItem("loggedInUser");
+      const postRef = doc(db, "posts", postId);
+
+      await updateDoc(postRef, {
+        likes: arrayUnion(username)
+      });
+    }
+
+    // Bình luận bài viết
+    function commentPost(postId) {
+      const comment = prompt("Nhập bình luận:");
+      if (!comment) return;
+
+      const username = sessionStorage.getItem("loggedInUser");
+      const postRef = doc(db, "posts", postId);
+
+      updateDoc(postRef, {
+        comments: arrayUnion({ username, text: comment })
+      });
+    }
+
+    // Chia sẻ bài viết
+    function sharePost(content) {
+      navigator.clipboard.writeText(content);
+      alert("Đã sao chép nội dung bài viết!");
+    }
+
     window.onload = function() {
-      let loggedInUser = sessionStorage.getItem("loggedInUser");
+      const loggedInUser = sessionStorage.getItem("loggedInUser");
       if (loggedInUser) showApp(loggedInUser);
     };
   </script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; color: #333; }
+    .auth-container, .app-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    .auth-box, .post-box, .post { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 10px; width: 90%; max-width: 400px; }
+    .auth-box input, .auth-box button, .post-box textarea, .post-box button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 4px; }
+    .auth-box button, .post-box button { background: #4267B2; color: white; cursor: pointer; }
+    .auth-box .google-btn { background: #db4437; }
+  </style>
+</head>
+<body>
+  <div id="auth-container" class="auth-container">
+    <div id="login-box" class="auth-box">
+      <input type="text" id="login-username" placeholder="Email">
+      <input type="password" id="login-password" placeholder="Mật khẩu">
+      <button onclick="login()">Đăng nhập</button>
+      <button class="google-btn" onclick="loginWithGoogle()">Google</button>
+      <p><a href="#" onclick="showRegister()">Đăng ký</a></p>
+    </div>
+  </div>
+
+  <div id="app-container" class="app-container" style="display: none;">
+    <button onclick="logout()">Đăng xuất</button>
+    <div class="post-box">
+      <textarea id="post-content"></textarea>
+      <button onclick="addPost()">Đăng bài</button>
+    </div>
+    <div id="posts"></div>
+  </div>
 </body>
-</html>
+  </html>
